@@ -1,0 +1,9 @@
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+	RewriteCond %{REQUEST_FILENAME} !-f
+  	RewriteCond %{REQUEST_FILENAME} !-d
+  	RewriteRule ^(.*)$ index.php?q=$1 [L,QSA]
+		RewriteCond %{REQUEST_METHOD} OPTIONS
+		RewriteRule ^(.*)$ $1 [R=200,L]
+Header always set Content-Security-Policy "upgrade-insecure-requests;"
+</IfModule>
