@@ -1,224 +1,370 @@
-module.exports = function(grunt) {
-  // Load all grunt tasks.
-  require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
+module.exports = function (grunt) {
+  // Full list of files that must be included by RequireJS
+  includes = [
+    'jquery.select2',
+    'almond',
 
-  // Project configuration.
+    'jquery-mousewheel' // shimmed for non-full builds
+  ];
+
+  fullIncludes = [
+    'jquery',
+
+    'select2/compat/containerCss',
+    'select2/compat/dropdownCss',
+
+    'select2/compat/initSelection',
+    'select2/compat/inputData',
+    'select2/compat/matcher',
+    'select2/compat/query',
+
+    'select2/dropdown/attachContainer',
+    'select2/dropdown/stopPropagation',
+
+    'select2/selection/stopPropagation'
+  ].concat(includes);
+
+  var i18nModules = [];
+  var i18nPaths = {};
+
+  var i18nFiles = grunt.file.expand({
+    cwd: 'src/js'
+  }, 'select2/i18n/*.js');
+
+  var testFiles = grunt.file.expand('tests/**/*.html');
+  var testUrls = testFiles.map(function (filePath) {
+    return 'http://localhost:9999/' + filePath;
+  });
+
+  var testBuildNumber = "unknown";
+
+  if (process.env.TRAVIS_JOB_ID) {
+    testBuildNumber = "travis-" + process.env.TRAVIS_JOB_ID;
+  } else {
+    var currentTime = new Date();
+
+    testBuildNumber = "manual-" + currentTime.getTime();
+  }
+
+  for (var i = 0; i < i18nFiles.length; i++) {
+    var file = i18nFiles[i];
+    var name = file.split('.')[0];
+
+    i18nModules.push({
+      name: name
+    });
+
+    i18nPaths[name] = '../../' + name;
+  }
+
+  var minifiedBanner = '/*! Select2 <%= package.version %> | https://github.com/select2/select2/blob/master/LICENSE.md */';
+
   grunt.initConfig({
     package: grunt.file.readJSON('package.json'),
-    nodeunit: {
-      all: ['tests/*_test.js']
+
+    clean: {
+      docs: ['docs/_site']
     },
 
-    sass: {
-      options: {
-        outputStyle: 'expanded',
-        sourcemap: 'none',
-        // Increase Sass' number "precision" to 8 to match Less output.
-        //
-        // @see https://github.com/twbs/bootstrap-sass#sass-number-precision
-        // @see https://github.com/sass/node-sass/issues/673#issue-57581701
-        // @see https://github.com/sass/sass/issues/1122
-        precision: 8
-      },
-      dist: {
-        files: {
-          'dist/select2-bootstrap.css': 'src/build.scss'
-        }
-      },
-      test: {
-        files: {
-          'tmp/select2-bootstrap.css': 'src/build.scss'
-        }
-      }
-    },
-
-    cssmin: {
-      target: {
-        files: {
-          'dist/select2-bootstrap.min.css': 'dist/select2-bootstrap.css'
-        }
-      }
-    },
-
-    jshint: {
-      all: ['Gruntfile.js', '*.json']
-    },
-
-    bump: {
-      options: {
-        files: [
-          'package.json'
+    concat: {
+      'dist': {
+        options: {
+          banner: grunt.file.read('src/js/wrapper.start.js'),
+        },
+        src: [
+          'dist/js/select2.js',
+          'src/js/wrapper.end.js'
         ],
-        push: false,
-        createTag: false,
-        commit: false
+        dest: 'dist/js/select2.js'
+      },
+      'dist.full': {
+        options: {
+          banner: grunt.file.read('src/js/wrapper.start.js'),
+        },
+        src: [
+          'dist/js/select2.full.js',
+          'src/js/wrapper.end.js'
+        ],
+        dest: 'dist/js/select2.full.js'
       }
     },
 
-    copy: {
-      main: {
-        files: [
-          {
-            src: 'node_modules/bootstrap/dist/css/bootstrap.min.css',
-            dest: 'docs/css/bootstrap.min.css'
-          },
-          {
-            src: 'node_modules/bootstrap/dist/js/bootstrap.min.js',
-            dest: 'docs/js/bootstrap.min.js'
-          },
-          {
-            expand: true,
-            cwd: 'node_modules/bootstrap/dist/fonts',
-            src: ['**/*'],
-            dest: 'docs/fonts'
-          },
-          {
-            src: 'node_modules/Respond.js/dest/respond.min.js',
-            dest: 'docs/js/respond.min.js'
-          },
-          {
-            src: 'node_modules/anchor-js/anchor.min.js',
-            dest: 'docs/js/anchor.min.js'
-          },
-          {
-            src: 'dist/select2-bootstrap.css',
-            dest: 'tmp/select2-bootstrap.css'
-          },
-          {
-            src: 'dist/select2-bootstrap.css',
-            dest: 'docs/css/select2-bootstrap.css'
-          },
-          {
-            src: 'dist/select2-bootstrap.css',
-            dest: 'docs/_site/css/select2-bootstrap.css'
-          }
-        ]
+    connect: {
+      tests: {
+        options: {
+          base: '.',
+          hostname: '127.0.0.1',
+          port: 9999
+        }
+      }
+    },
+
+    uglify: {
+      'dist': {
+        src: 'dist/js/select2.js',
+        dest: 'dist/js/select2.min.js',
+        options: {
+          banner: minifiedBanner
+        }
+      },
+      'dist.full': {
+        src: 'dist/js/select2.full.js',
+        dest: 'dist/js/select2.full.min.js',
+        options: {
+          banner: minifiedBanner
+        }
+      }
+    },
+
+    qunit: {
+      all: {
+        options: {
+          urls: testUrls
+        }
+      }
+    },
+
+    'saucelabs-qunit': {
+      all: {
+        options: {
+          build: testBuildNumber,
+          tags: ['tests', 'qunit'],
+          urls: testUrls,
+          testname: 'QUnit test for Select2',
+          browsers: [
+            {
+              browserName: 'internet explorer',
+              version: '8'
+            },
+            {
+              browserName: 'internet explorer',
+              version: '9'
+            },
+            {
+              browserName: 'internet explorer',
+              version: '10'
+            },
+            {
+              browserName: 'internet explorer',
+              version: '11'
+            },
+
+            {
+              browserName: 'firefox',
+              platform: 'linux'
+            },
+
+            {
+              browserName: 'chrome'
+            },
+
+            {
+              browserName: 'opera',
+              version: '12',
+              platform: 'linux'
+            }
+          ]
+        }
       }
     },
 
     'gh-pages': {
       options: {
-        base: 'docs/_site',
-        message: 'Update gh-pages.'
+        base: 'docs',
+        branch: 'master',
+        clone: 'node_modules/grunt-gh-pages/repo',
+        message: 'Updated docs with master',
+        push: true,
+        repo: 'git@github.com:select2/select2.github.io.git'
       },
-      src: ['**/*']
+      src: '**'
     },
 
     jekyll: {
       options: {
         src: 'docs',
-        dest: 'docs/_site',
-        sourcemaps: false
+        dest: 'docs/_site'
       },
       build: {
         d: null
+      },
+      serve: {
+        options: {
+          serve: true,
+          watch: true
+        }
+      }
+    },
+
+    jshint: {
+      options: {
+        jshintrc: true
+      },
+      code: {
+        src: ['src/js/**/*.js']
+      },
+      tests: {
+        src: ['tests/**/*.js']
+      }
+    },
+
+    sass: {
+      dist: {
+        options: {
+          outputStyle: 'compressed'
+        },
+        files: {
+          'dist/css/select2.min.css': [
+            'src/scss/core.scss',
+            'src/scss/theme/default/layout.css'
+          ]
+        }
+      },
+      dev: {
+        options: {
+          outputStyle: 'nested'
+        },
+        files: {
+          'dist/css/select2.css': [
+            'src/scss/core.scss',
+            'src/scss/theme/default/layout.css'
+          ]
+        }
+      }
+    },
+
+    symlink: {
+      docs: {
+        cwd: 'dist',
+        expand: true,
+        overwrite: false,
+        src: [
+          '*'
+        ],
+        dest: 'docs/dist',
+        filter: 'isDirectory'
+      }
+    },
+
+    requirejs: {
+      'dist': {
+        options: {
+          baseUrl: 'src/js',
+          optimize: 'none',
+          name: 'select2/core',
+          out: 'dist/js/select2.js',
+          include: includes,
+          namespace: 'S2',
+          paths: {
+            'almond': require.resolve('almond').slice(0, -3),
+            'jquery': 'jquery.shim',
+            'jquery-mousewheel': 'jquery.mousewheel.shim'
+          },
+          wrap: {
+            startFile: 'src/js/banner.start.js',
+            endFile: 'src/js/banner.end.js'
+          }
+        }
+      },
+      'dist.full': {
+        options: {
+          baseUrl: 'src/js',
+          optimize: 'none',
+          name: 'select2/core',
+          out: 'dist/js/select2.full.js',
+          include: fullIncludes,
+          namespace: 'S2',
+          paths: {
+            'almond': require.resolve('almond').slice(0, -3),
+            'jquery': 'jquery.shim',
+            'jquery-mousewheel': require.resolve('jquery-mousewheel').slice(0, -3)
+          },
+          wrap: {
+            startFile: 'src/js/banner.start.js',
+            endFile: 'src/js/banner.end.js'
+          }
+        }
+      },
+      'i18n': {
+        options: {
+          baseUrl: 'src/js/select2/i18n',
+          dir: 'dist/js/i18n',
+          paths: i18nPaths,
+          modules: i18nModules,
+          namespace: 'S2',
+          wrap: {
+            start: minifiedBanner + grunt.file.read('src/js/banner.start.js'),
+            end: grunt.file.read('src/js/banner.end.js')
+          }
+        }
       }
     },
 
     watch: {
-      sass: {
-        files: 'src/select2-bootstrap.scss',
-        tasks: ['buildTheme']
-      },
-      jekyll: {
-        files: ['docs/_layouts/*.html', 'docs/_includes/*.html', '*.html'],
-        tasks: ['jekyll']
-      }
-    },
-
-    browserSync: {
-      files: {
-        src : ['docs/_site/css/*.css']
-      },
-      options: {
-        watchTask: true,
-        ghostMode: {
-          clicks: true,
-          scroll: true,
-          links: true,
-          forms: true
-        },
-        server: {
-          baseDir: 'docs/_site'
-        }
-      }
-    },
-
-    postcss: {
-      options: {
-        map: false,
-        processors: [
-          // Autoprefixer browser settings as required by Bootstrap
-          //
-          // @see https://github.com/twbs/bootstrap-sass#sass-autoprefixer
-          require('autoprefixer')({browsers: [
-            "Android 2.3",
-            "Android >= 4",
-            "Chrome >= 20",
-            "Firefox >= 24",
-            "Explorer >= 8",
-            "iOS >= 6",
-            "Opera >= 12",
-            "Safari >= 6"
-          ]})
+      js: {
+        files: [
+          'src/js/select2/**/*.js',
+          'tests/**/*.js'
+        ],
+        tasks: [
+          'compile',
+          'test',
+          'minify'
         ]
       },
-      dist: {
-        src: [
-          'dist/select2-bootstrap.css'
+      css: {
+        files: [
+          'src/scss/**/*.scss'
+        ],
+        tasks: [
+          'compile',
+          'minify'
         ]
-      },
-      test: {
-        src: [
-          'tmp/select2-bootstrap.css'
-        ]
-      }
-    },
-
-    scss2less: {
-      convert: {
-        files: [{
-          src: 'src/select2-bootstrap.scss',
-          dest: 'src/select2-bootstrap.less'
-        }]
-      }
-    },
-
-    // Only used to generate CSS for the tests.
-    less: {
-      test: {
-        options: {
-          sourceMap: false
-        },
-        src: 'src/build.less',
-        dest: 'tmp/select2-bootstrap.css'
-      }
-    },
-
-    stamp: {
-      options: {
-        banner: '/*!\n' +
-                ' * Select2 Bootstrap Theme v<%= package.version %> (<%= package.homepage %>)\n' +
-                ' * Copyright 2015-<%= grunt.template.today("yyyy") %> <%= package.author %> and contributors (https://github.com/select2/select2-bootstrap-theme/graphs/contributors)\n' +
-                ' * Licensed under MIT (https://github.com/select2/select2-bootstrap-theme/blob/master/LICENSE)\n' +
-                ' */\n'
-      },
-      dist: {
-        files: {
-          src: 'dist/*'
-        }
-      },
-      test: {
-        files: {
-          src: 'tmp/*'
-        }
       }
     }
-
   });
 
-  // Default tasks.
-  grunt.registerTask('buildTheme', ['sass', 'postcss', 'cssmin', 'stamp', 'copy'])
-  grunt.registerTask('build', ['buildTheme', 'jekyll:build']);
-  grunt.registerTask('serve', ['buildTheme', 'build', 'browserSync', 'watch']);
+  grunt.loadNpmTasks('grunt-contrib-clean');
+  grunt.loadNpmTasks('grunt-contrib-concat');
+  grunt.loadNpmTasks('grunt-contrib-connect');
+  grunt.loadNpmTasks('grunt-contrib-jshint');
+  grunt.loadNpmTasks('grunt-contrib-qunit');
+  grunt.loadNpmTasks('grunt-contrib-requirejs');
+  grunt.loadNpmTasks('grunt-contrib-symlink');
+  grunt.loadNpmTasks('grunt-contrib-uglify');
+  grunt.loadNpmTasks('grunt-contrib-watch');
+
+  grunt.loadNpmTasks('grunt-gh-pages');
+  grunt.loadNpmTasks('grunt-jekyll');
+  grunt.loadNpmTasks('grunt-saucelabs');
+  grunt.loadNpmTasks('grunt-sass');
+
+  grunt.registerTask('default', ['compile', 'test', 'minify']);
+
+  grunt.registerTask('compile', [
+    'requirejs:dist', 'requirejs:dist.full', 'requirejs:i18n',
+    'concat:dist', 'concat:dist.full',
+    'sass:dev'
+  ]);
+  grunt.registerTask('minify', ['uglify', 'sass:dist']);
+  grunt.registerTask('test', ['connect:tests', 'qunit', 'jshint']);
+
+  var ciTasks = [];
+
+  ciTasks.push('compile')
+  ciTasks.push('connect:tests');
+
+  // Can't run Sauce Labs tests in pull requests
+  if (process.env.TRAVIS_PULL_REQUEST == 'false') {
+    ciTasks.push('saucelabs-qunit');
+  }
+
+  ciTasks.push('qunit');
+  ciTasks.push('jshint');
+
+  grunt.registerTask('ci', ciTasks);
+
+  grunt.registerTask('docs', ['symlink:docs', 'jekyll:serve']);
+
+  grunt.registerTask('docs-release', ['default', 'clean:docs', 'gh-pages']);
 };

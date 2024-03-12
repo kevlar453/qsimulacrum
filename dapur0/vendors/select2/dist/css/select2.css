@@ -1,4 +1,3 @@
-
 .select2-container {
   box-sizing: border-box;
   display: inline-block;
@@ -9,6 +8,7 @@
     box-sizing: border-box;
     cursor: pointer;
     display: block;
+    height: 28px;
     user-select: none;
     -webkit-user-select: none; }
     .select2-container .select2-selection--single .select2-selection__rendered {
@@ -126,7 +126,7 @@
   width: 1px !important; }
 
 .select2-container--default .select2-selection--single {
-  background-color: #fffcf5;
+  background-color: #fff;
   border: 1px solid #aaa;
   border-radius: 4px; }
   .select2-container--default .select2-selection--single .select2-selection__rendered {

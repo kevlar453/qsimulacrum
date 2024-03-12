@@ -1,30 +1,12 @@
 {
-  "name": "select2-bootstrap-theme",
-  "description": "A theme for Select2 v4 and Bootstrap 3.",
-  "keywords": [
-    "bootstrap",
-    "select2",
-    "css",
-    "sass",
-    "less"
-  ],
-  "homepage": "https://select2.github.io/select2-bootstrap-theme",
-  "main": [
-    "src/select2-bootstrap.scss",
-    "src/select2-bootstrap.less"
-  ],
-  "license": "MIT",
-  "ignore": [
-    "**/.*",
-    "node_modules",
-    "components"
-  ],
-  "dependencies": {
-    "bootstrap": "^3.3.4",
-    "select2": "^4.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git@github.com:select2/select2-bootstrap-theme.git"
-  }
+    "name": "select2",
+    "description": "Select2 is a jQuery based replacement for select boxes. It supports searching, remote data sets, and infinite scrolling of results.",
+    "main": [
+        "dist/js/select2.js",
+        "src/scss/core.scss"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git@github.com:select2/select2.git"
+    }
 }
